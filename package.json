@@ -1,0 +1,19 @@
+{
+  "name": "dimazakaz",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "sqlite": "^4.2.1",
+    "sqlite3": "^5.1.6",
+    "workerpool": "^6.4.0"
+  }
+}
