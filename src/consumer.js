@@ -110,7 +110,7 @@ export class RabbitMQConsumer {
 }
 
 export async function createConsumer(dsn, info, onMessage) { 
-    let ins = RabbitMQConsumer(dsn, info, onMessage)
+    let ins = new RabbitMQConsumer(dsn, info, onMessage)
     RabbitMQConsumer.setInstance(ins)
 
     await ins.setup() 

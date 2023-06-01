@@ -4,16 +4,11 @@ import { connect } from "amqplib"
 export class RabbitMQPublisher { 
     static Instance = null 
 
-    constructor(queue_name, dsn) { 
+    constructor(dsn, queue_name) { 
         this.queue_name = queue_name 
         this.dsn = dsn 
         this.connection = null 
         this.channel = null 
-
-        if (RabbitMQPublisher.Instance === null) { 
-            RabbitMQPublisher.Instance = this 
-            return 
-        }
     }
 
     async _connect() { 
@@ -46,11 +41,13 @@ export class RabbitMQPublisher {
         this.send(`{"url": "${url}", "price": ${price}, "tx_id": ${tx_id}}`)
     }
 
+    static setInstance(ins) { 
+        RabbitMQPublisher.Instance = ins  
+    }
+
     static getInstance() { 
         // singleton 
-        if (RabbitMQPublisher.Instance !== null) { 
-            return RabbitMQPublisher.Instance
-        } 
+        return RabbitMQPublisher.Instance
     }
 }
 
@@ -71,7 +68,9 @@ export async function sendURLToRabbitMq(url, price, tx_id) {
 }
 
 export async function connectToRabbitMQ(amqp_url, queue_name) {
+    console.log(`Publisher DSN: ${amqp_url}`)
     const publisher = new RabbitMQPublisher(amqp_url, queue_name)
     await publisher.setup()
+    RabbitMQPublisher.setInstance(publisher)
 }
 

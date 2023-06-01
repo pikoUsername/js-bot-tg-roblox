@@ -1,11 +1,11 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { RabbitMQPublisher, sendURLToRabbitMq, connectToRabbitMQ } from './src/publisher.js';
-import { RabbitMQConsumer, createConsumer, createConsumerInfo, runConsumer } from './src/consumer.js';
+import { createConsumer, createConsumerInfo, runConsumer } from './src/consumer.js';
 import { SQLiteConnector } from './src/db.js';
 import { createTables } from './src/repos.js';
 import { QUEUE_NAME, EXCHANGE_KEY } from './src/consts.js'
 const bot = new TelegramBot("5605925167:AAHEJZgNsc7NyKtcSCfJ1C0emJc5PCvVjNs", { polling: true });
-const amqpUrl = 'amqp://piko:password@localhost:5672/test?heartbeat=0' 
+const amqpUrl = 'amqp://user:password@localhost:5672/test?heartbeat=0' 
 
 
 function validateReturnData(data) { 
@@ -57,14 +57,20 @@ async function TgOnMessageHandler(body) {
     await bot.sendMessage(user.userId, `Ваша транзакция обработана, вот её результат: \n ${status_code_info}`)
 }
 
-let conn = new SQLiteConnector("database.db")
-conn.connect()
-createTables(conn)
+let conn = new SQLiteConnector("./database.db")
+conn.connect().then(() => { 
+    createTables(conn)
+}).catch((reason) => console.error(reason))
+
 // Вызов функции для подключения к RabbitMQ
-connectToRabbitMQ(amqpUrl, QUEUE_NAME);
-createConsumer(amqpUrl, createConsumerInfo(QUEUE_NAME, EXCHANGE_KEY), TgOnMessageHandler).then(() => {
-    runConsumer()
-})
+try { 
+    connectToRabbitMQ(amqpUrl, QUEUE_NAME);
+    createConsumer(amqpUrl, createConsumerInfo(QUEUE_NAME, EXCHANGE_KEY), TgOnMessageHandler).then(() => {
+        runConsumer()
+    })
+} catch (err) { 
+    console.error(err)
+}
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;

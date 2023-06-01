@@ -5,33 +5,33 @@ export class TransactionRepository {
         this.conn = conn 
     }
 
-    getByID(id) { 
-        return this.conn.execute("SELECT * FROM transactions WHERE id = ?", [id]) 
+    async getByID(id) { 
+        return await this.conn.execute("SELECT * FROM transactions WHERE id = ?", [id]) 
     }
 
-    acceptIt(id, userID) { 
-        this.conn.execute(`
+    async acceptIt(id, userID) { 
+        await this.conn.execute(`
         UPDATE transactions SET accepted = true WHERE id = ? 
         `, [id])
-        this.conn.execute(`
+        await this.conn.execute(`
         UPDATE users SET balance = balance - (SELECT price FROM tranactions WHERE id = ? AND accepted = true LIMIT 1) WHERE id = ?
         `, [id, userID])
     }
 
-    create(name, url, user_id, price) { 
-        return this.conn.execute(`
+    async create(name, url, user_id, price) { 
+        return await this.conn.execute(`
             INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING * 
         `, [name, url, user_id, price])
     }
 
-    getUserByTransaction(id) {  
-        return this.conn.get(`
+    async getUserByTransaction(id) {  
+        return await this.conn.get(`
             SELECT u.* FROM users AS u WHERE id IN (SELECT user_id FROM transactions AS tx WHERE user_id = ?) 
         `, [id])
     }
 
-    createTable() { 
-        this.conn.execute(`
+    async createTable() { 
+        await this.conn.execute(`
         CREATE TABLE IF NOT EXISTS transactions( 
             id SERIAL PRIMARY KEY, 
             name VARCHAR(52) NOT NULL, 
@@ -59,20 +59,20 @@ export class UsersRepository {
         this.conn = conn 
     }
 
-    getByID(id) { 
-        this.conn.fetch(
+    async getByID(id) { 
+        await this.conn.fetch(
             `SELECT * FROM users WHERE id = ?;`, [id]
         )
     }
 
-    create(tg_username, user_id) { 
-        this.conn.execute(
+    async create(tg_username, user_id) { 
+        await this.conn.execute(
             `INSERT INTO users(tg_username, user_id) VALUES (?, ?)`, [tg_username, user_id]
         )
     }
 
-    createTable() { 
-        this.conn.execute(
+    async createTable() { 
+        await this.conn.execute(
             `CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 tg_username VARCHAR(125),
@@ -95,8 +95,8 @@ export class UsersRepository {
 }
 
 
-export function createTables(conn) { 
+export async function createTables(conn) { 
     let trans = new TransactionRepository(conn)
     
-    trans.createTable()
+    await trans.createTable()
 }
