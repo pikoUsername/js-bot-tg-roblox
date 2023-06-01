@@ -1,14 +1,21 @@
-const TelegramBot = require('node-telegram-bot-api');
+import TelegramBot from 'node-telegram-bot-api';
+import sqlite3 from 'sqlite3'; 
+import { sendURLToRabbitMq } from './src/publisher.js';
+
+
+const db = new sqlite3.Database('./database.db');
 const bot = new TelegramBot("5605036155:AAHgseuE-0PXQvkrGxP414W-cZMVZmxigHY", { polling: true });
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('database.db');
+
 
 // говнокод высшей степени! Награждаю вас кто написал это, высшей степенью говна кодерства 
 let chatState = {};
+// импорт из glua! ПРОГРЕСС 
 let Dividednumber;
 let payment;
 let vivodNumber;
 let specialUserId
+let transfer_count; 
+let urls; 
 
 
 db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -21,7 +28,26 @@ db.run(`CREATE TABLE IF NOT EXISTS users (
   allAmountBalance INTEGER
 )`);
 
+db.run(`
+CREATE TABLE IF NOT EXISTS transactions( 
+    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+    name VARCHAR(52) NOT NULL, 
+    user_id INTEGER REFERENCES users ON DELETE CASCADE, 
+    url TEXT NOT NULL, 
+    accepted BOOLEAN DEFAULT false, 
+    status INTEGER, 
+    price INTEGER
+); 
+`)
 
+function isValidHttpUrl(string) {
+    try {
+        const newUrl = new URL(string);
+        return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
+    } catch (err) {
+        return false;
+    }
+}
 
 bot.on("callback_query", (callbackQuery) => {
     const chatId = callbackQuery.message.chat.id;
@@ -415,10 +441,53 @@ bot.on("callback_query", (callbackQuery) => {
         }
     }
 })
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     if (msg.text === "Вызвать меню") {
         bot.sendMessage(chatId, "Вот мое меню:", Keyboard)
+    }
+    if (chatState[chatId] === "TRANSFER_INPUT") { 
+            let number = +msg.text
+            if (number === NaN) { 
+                await bot.sendMessage("Отправьте занаво свое значение")
+                return 
+            } 
+            
+            await bot.sendMessage(chatId,"Введите ссылку на геймпасс" )
+
+            transfer_count[chatId] = number 
+            // db.run( 
+            //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
+            // , "vivod_sredstv",)
+            chatState[chatId] = "URL_INPUT" 
+    } 
+    if (chatState[chatId] === "URL_INPUT") { 
+        if (!isValidHttpUrl()) {
+            await bot.sendMessage("Ссылка не правильная")
+        }
+        urls[chatId] = msg.text
+
+        chatState[chatId] = "COMPLETE_GAMEPASS"
+    }
+    if (chatState[chatId] === "COMPLETE_GAMEPASS") { 
+        db.run(`
+            SELECT id FROM users WHERE userId = ? 
+        `, [msg.from.id], async (err, row) => {  
+            if (err) { 
+                console.error(err) 
+                return 
+            }
+            await bot.sendMessage("Ваша транзакция на оброботке")
+            db.run(`
+                INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
+            `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId]], async (err, row) => {
+                    if (err) { 
+                        console.error(err) 
+                        return 
+                    }
+                    await sendURLToRabbitMq(urls[chatId], transfer_count[chatId], row.id)
+            }) 
+        }) 
     }
     if (chatState[chatId] === "waitMoneyAmount") {
         if (msg.text === msg.text) {
@@ -488,14 +557,7 @@ bot.on('message', (msg) => {
             }
         }
     }
-    function isValidHttpUrl(string) {
-        try {
-            const newUrl = new URL(string);
-            return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
-        } catch (err) {
-            return false;
-        }
-    }
+ 
     const url = msg.text;
     if (chatState[chatId] === "linkwait") {
         if (isValidHttpUrl(url)) {
@@ -593,6 +655,24 @@ const againMenu = {
         one_time_keyboard: false,
     }
 }
+
+bot.onText(/\/transfer/, async (msg) => { 
+    const chatId = msg.chat.id;
+    const userid = msg.from.id;
+    db.run(`SELECT * FROM users WHERE userId = ?`, [userid], async (err, row) => {
+        if (err) { 
+            console.error(err)
+            return 
+        }
+        if (row === null || row === undefined) { 
+            return 
+        }
+
+        chatState[chatId] = "TRANSFER_INPUT"
+
+        await bot.sendMessage("Введите сколько хотите вывести!")
+    }) 
+})
 
 bot.onText(/\/addbalance (\d+) (\d+)/, (msg, match) => {
     const chatId = msg.chat.id;
@@ -723,3 +803,5 @@ function handleUserMessage(chatId, message) {
 bot.on('polling_error', (error) => {
     console.log(error);
 });
+
+console.log("Started")
