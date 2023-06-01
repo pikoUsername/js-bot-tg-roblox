@@ -1,5 +1,5 @@
-import * as sqlite from 'sqlite';
 import sqlite3 from 'sqlite3'; 
+// const sqlite3 = sqlite3.verbose()
 const NOT_IMPLEMENTED_ERROR = "Not implemented"
 
 
@@ -8,11 +8,11 @@ export class BasicDBConnector {
         throw new Error(NOT_IMPLEMENTED_ERROR)
     }
 
-    execute(query, args, callback) { 
+    execute(query, args=[], callback) { 
         throw new Error(NOT_IMPLEMENTED_ERROR)
     }
 
-    get(query, args, callback) { 
+    get(query, args=[], callback) { 
         throw new Error(NOT_IMPLEMENTED_ERROR)
     }
 
@@ -29,24 +29,22 @@ export class SQLiteConnector extends BasicDBConnector {
         this.conn = null 
     }
     
-    async connect() { 
+    connect() { 
         console.log(`FILENAME: ${this.dsn}`);
 
-
-        this.conn = new sqlite.Database({filename: this.dsn, driver: sqlite.Database});
+        this.conn = new sqlite3.Database(this.dsn)
         console.log('Creating database connection');
-        await this.conn.open();
     }
 
-    async execute(query, args, callback=null) { 
-        await this.conn.run(query, args, callback)
+    execute(query, args=[], cb=null) {        
+        return this.conn.get(query, args, cb)
     }
 
-    async fetch(query, args, callback=null) { 
-        await this.conn.get(query, args, callback)
+    fetch(query, args=[], cb=null) {                 
+        return this.conn.get(query, args, cb)
     }
 
-    async close() { 
-        await this.conn.close()
+    close() { 
+        this.conn.close()
     }
 }

@@ -5,37 +5,36 @@ export class TransactionRepository {
         this.conn = conn 
     }
 
-    async getByID(id) { 
-        return await this.conn.execute("SELECT * FROM transactions WHERE id = ?", [id]) 
+    getByID(id, cb) { 
+        return this.conn.fetch("SELECT * FROM transactions WHERE id = ?", [id], cb) 
     }
 
-    async acceptIt(id, userID) { 
-        await this.conn.execute(`
+    acceptIt(id, userID, callback) { 
+        this.conn.execute(`
         UPDATE transactions SET accepted = true WHERE id = ? 
-        `, [id])
-        await this.conn.execute(`
+        `, [id]).execute(`
         UPDATE users SET balance = balance - (SELECT price FROM tranactions WHERE id = ? AND accepted = true LIMIT 1) WHERE id = ?
-        `, [id, userID])
+        `, [id, userID], callback)
     }
 
-    async create(name, url, user_id, price) { 
-        return await this.conn.execute(`
-            INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING * 
-        `, [name, url, user_id, price])
+    create(name, url, user_id, price, cb) { 
+        return this.conn.execute(`
+            INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
+        `, [name, url, user_id, price], cb)
     }
 
-    async getUserByTransaction(id) {  
-        return await this.conn.get(`
+    getUserByTransaction(id, cb) {  
+        return this.conn.fetch(`
             SELECT u.* FROM users AS u WHERE id IN (SELECT user_id FROM transactions AS tx WHERE user_id = ?) 
-        `, [id])
+        `, [id], cb)
     }
 
     async createTable() { 
-        await this.conn.execute(`
+        this.conn.execute(`
         CREATE TABLE IF NOT EXISTS transactions( 
-            id SERIAL PRIMARY KEY, 
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
             name VARCHAR(52) NOT NULL, 
-            user_id INTEGER REFERENCE users(id) NOT NULL ON DELETE CASCADE, 
+            user_id INTEGER REFERENCES users ON DELETE CASCADE, 
             url TEXT NOT NULL, 
             accepted BOOLEAN DEFAULT false, 
             status INTEGER, 
@@ -59,44 +58,81 @@ export class UsersRepository {
         this.conn = conn 
     }
 
-    async getByID(id) { 
-        await this.conn.fetch(
-            `SELECT * FROM users WHERE id = ?;`, [id]
+    getByID(id, callback) { 
+        return this.conn.fetch(
+            `SELECT * FROM users WHERE id = ? LIMIT 1;`, [id], callback
         )
     }
 
-    async create(tg_username, user_id) { 
-        await this.conn.execute(
-            `INSERT INTO users(tg_username, user_id) VALUES (?, ?)`, [tg_username, user_id]
+    getByTgID(tg_id, callback) { 
+        return this.conn.fetch( 
+            'SELECT * FROM users WHERE tg_id = ? LIMIT 1', [tg_id], callback, 
         )
     }
 
-    async createTable() { 
-        await this.conn.execute(
+    create(tg_username, tg_id, callback) { 
+        return this.conn.execute(
+            `INSERT INTO users(tg_username, tg_id) VALUES (?, ?) RETURNING *`,
+            [tg_username, tg_id], 
+            callback
+        )
+    }
+
+    blockUser(tg_id, callback) { 
+        return this.conn.execute( 
+            `UPDATE users SET is_blocked = 1 WHERE tg_id = ?`
+            [tg_id], callback
+        )
+    }
+
+    blockUser(userId, callback) {
+        return this.conn.run(
+            `UPDATE users SET is_blocked = true WHERE tg_id = ?`,
+            [userId],
+            callback
+        )
+    }
+
+    changeUserBalance(tg_id, amount, callback) {
+        return this.conn.run(
+            `UPDATE users SET userBalance = userBalance + ? WHERE userId = ?`,
+            [amount, tg_id],
+            callback, 
+        );
+    }
+
+    createTable() { 
+        this.conn.execute(
             `CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 tg_username VARCHAR(125),
                 balance INTEGER DEFAULT 0,
-                user_id INTEGER,
+                tg_id INTEGER,
                 timeReg TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 chatState VARCHAR(125) DEFAULT 'chat_state',
-                allAmountBalance INTEGER DEFAULT 0 
-            )`
+                allAmountBalance INTEGER DEFAULT 0,  
+                is_blocked BOOLEAN DEFAULT false
+            );`
         )
     }
 
     static getInstance() { 
-        return TransactionRepository.Instance
+        return UsersRepository.Instance
     }
 
     static setInstance(ins) { 
-        TransactionRepository.Instance = ins 
+        UsersRepository.Instance = ins 
     }
 }
 
 
-export async function createTables(conn) { 
+export function createTables(conn) { 
     let trans = new TransactionRepository(conn)
+    let user = new UsersRepository(conn)
+
+    TransactionRepository.setInstance(trans)
+    UsersRepository.setInstance(user)
     
-    await trans.createTable()
+    user.createTable()
+    trans.createTable()
 }

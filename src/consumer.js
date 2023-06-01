@@ -1,4 +1,5 @@
 import { connect } from "amqplib"; 
+import { EXCHANGE_KEY, QUEUE_NAME } from "./consts.js";
 
 
 export const STATUSCODES = { 
@@ -26,13 +27,19 @@ export class RabbitMQConsumer {
         this.connection = null 
         this.channel = null
 
-        if (onMessage === null || onMessage === undefined) {  
-            this.onMessage = this.defaultOnMessage  
-        } else { 
-            this.onMessage = onMessage
+        this.onMessage = onMessage 
+        this.prefetch = 2 
+        this.running = false 
+    }
+
+    async stop() { 
+        if (!this.running) { 
+            return 
         }
 
-        this.prefetch = 2 
+        await this.channel.close()
+        await this.connection.close()
+
         this.running = false 
     }
 
@@ -56,19 +63,35 @@ export class RabbitMQConsumer {
         )
     }
 
-    defaultOnMessage(body) { 
-        console.log(`Accepted: ${body.content.toString()}`)
+    defaultOnMessage() {
+        return async (body) => {  
+            console.log(`Accepted: ${body.content.toString()}`)
+            try{ 
+                let result = await this.onMessage(body)
 
-        this.channel.ack(body)
+                if (result) { 
+                    this.channel.ack(body)
+                } else { 
+                    this.channel.reject(body, false)
+                }
+            } catch(err) { 
+                console.error(err)
+                await this.stop()
+            } 
+        } 
     }
-
+    
     async setup() { 
         this.connection = await connect(this.dsn)
         this.channel = await this.connection.createChannel()
 
         await this._init_queues()
 
-        await this.channel.bindQueue(this.info.queue_name, this.info.exchange_key, '')
+        console.log(`Binding to ${this.info.queue_name} queue, and ${this.info.exchange_key} exchange key`)
+        await this.channel.assertExchange(this.info.exchange_key, "direct", {durable: true, autoDelete: false})
+        await this.channel.assertQueue(this.info.queue_name, {arguments: {"x-max-priority": 10}, durable: true, autoDelete: false})
+
+        await this.channel.bindQueue(this.info.queue_name, this.info.exchange_key, 'url_queue_return')
 
         this.channel.on("error", this.errorHandler)
         this.channel.on("close", this.handleChannelClose)
@@ -89,14 +112,16 @@ export class RabbitMQConsumer {
         this.channel.prefetch(this.prefetch)
     }
 
-    runConsumer() { 
+    async runConsumer() { 
         if (this.running === true) { return }
         this.running = true 
 
-        this.channel.bindQueue(this.info.queue_name, this.info.exchange_key, '').then(() => {
-            console.log("Running Shit")
-            this.channel.consume(this.info.queue_name, this.onMessage, {noAck: false})
-        }) 
+        console.log("Running Shit, queue_name: %s", this.info.queue_name)
+        this.channel.consume(
+            this.info.queue_name,
+            this.defaultOnMessage(),
+            {noAck: false}
+        )
     }
 
     static setInstance(ins) { 
@@ -116,7 +141,7 @@ export async function createConsumer(dsn, info, onMessage) {
     await ins.setup() 
 } 
 
-export async function runConsumer() { 
+export function runConsumer() { 
     let cons = RabbitMQConsumer.getInstance()
     try { 
         cons.runConsumer()

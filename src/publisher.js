@@ -32,12 +32,11 @@ export class RabbitMQPublisher {
     send(body) { 
         const messageBuffer = Buffer.from(body);
 
-        console.log("SHIT")
-
-        this.channel.sendToQueue(this.queue_name, messageBuffer, {contentType: "application/json", deliveryMode: 2});
+        this.channel.sendToQueue(this.queue_name, messageBuffer, {contentType: "application/json"});
     }
 
     sendUrl(url, price, tx_id) { 
+        console.log(`URL: ${url}, Price: ${price}, TX_ID: ${tx_id}`)
         this.send(`{"url": "${url}", "price": ${price}, "tx_id": ${tx_id}}`)
     }
 
@@ -50,7 +49,6 @@ export class RabbitMQPublisher {
         return RabbitMQPublisher.Instance
     }
 }
-
 
 
 // реализация паттерна фасад
@@ -68,9 +66,9 @@ export async function sendURLToRabbitMq(url, price, tx_id) {
 }
 
 export async function connectToRabbitMQ(amqp_url, queue_name) {
-    console.log(`Publisher DSN: ${amqp_url}`)
+    console.log(`Publisher DSN: ${amqp_url}, with queue_name ${queue_name}`)
     const publisher = new RabbitMQPublisher(amqp_url, queue_name)
-    await publisher.setup()
     RabbitMQPublisher.setInstance(publisher)
+    await publisher.setup()
 }
 
