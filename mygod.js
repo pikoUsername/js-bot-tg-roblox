@@ -5,7 +5,7 @@ import { SQLiteConnector } from './src/db.js';
 import { TransactionRepository, UsersRepository, createTables } from './src/repos.js';
 import { QUEUE_NAME, QUEUE_RETURN_NAME, EXCHANGE_RETURN_KEY } from './src/consts.js'
 const bot = new TelegramBot("5605925167:AAHEJZgNsc7NyKtcSCfJ1C0emJc5PCvVjNs", { polling: true });
-const amqpUrl = 'amqp://user:password@localhost:5672/test?heartbeat=0' 
+const amqpUrl = 'amqp://piko:password@localhost:5672/test?heartbeat=0' 
 
 
 let conn = new SQLiteConnector("./database.db")

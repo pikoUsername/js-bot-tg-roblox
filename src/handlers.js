@@ -1,36 +1,51 @@
-export async function TgOnMessageHandler(body) { 
-    try { 
-        let content = body.content.toJSON()
-        console.log(content + " Content")
+import { STATUSCODES } from "./consts.js"
+import { getKeys } from "./helpers.js"
+import { TransactionRepository } from "./repos.js"
 
-        console.log(`Validation return data: ${content}`)
-    
-        // validateReturnData(content)
-    
-        let status_code_info = STATUSCODES[content.status_code]
-        let tx_id = content.tx_id 
-    
-        let ins = TransactionRepository.getInstance()
-        let tx = ins.getByID(tx_id)
-        if (tx === null || tx === undefined) { 
-            return false 
+export function TgOnMessageHandler(bot) {
+    return async (body) => {  
+        try { 
+            let data = JSON.parse(body.content.toString()) 
+            console.log(data + " Content")
+
+            console.log(`Validation return data: ${data}`)
+        
+            // validateReturnData(content)
+        
+            let status_code_info = STATUSCODES[data.status_code]
+            let tx_id = data.tx_id 
+        
+            let ins = TransactionRepository.getInstance()
+	        console.log(`Transaction id: ${tx_id}, Keys ${getKeys(data)}`)
+            ins.getByID(tx_id, async (err, tx) => {
+                if (err) { 
+                    console.error(err)
+                    return 
+                }
+                if (tx === null || tx === undefined) { 
+                    console.error("Cannot pull transaction id")
+                    return 
+                }
+                console.log("WHATAFAK")
+                ins.getUserByTransaction(tx_id, async (err, user) => {  
+                    if (err) { 
+                        console.error(err)
+                        return 
+                    } 
+                    if (user === null || user === undefined) { 
+                        console.error("Can't pull users with transaction ids;")
+                        return 
+                    }
+                    await bot.sendMessage(user.userId, `Ваша транзакция обработана, вот её результат: \n ${status_code_info}`)
+                }) 
+            })
+
+            return true 
+
+        } catch (err) { 
+            console.error(err)
         }
-        ins.getUserByTransaction(tx_id, async (err, user) => {  
-            if (err) { 
-                console.error(err)
-                return
-            } 
-            if (user === null || user === undefined) { 
-                console.error("Can't pull users with transaction ids;")
-                return 
-            }
-            await bot.sendMessage(user.user_id, `Ваша транзакция обработана, вот её результат: \n ${status_code_info}`)
-        }) 
-        return true 
-
-    } catch (err) { 
-        console.error(err)
-    }
+    } 
 }
 
 export async function startHandler(bot) {

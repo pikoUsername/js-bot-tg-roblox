@@ -44,6 +44,10 @@ export class SQLiteConnector extends BasicDBConnector {
         return this.conn.get(query, args, cb)
     }
 
+    get(query, args=[], cb=null) {                 
+        return this.conn.get(query, args, cb)
+    }
+
     close() { 
         this.conn.close()
     }

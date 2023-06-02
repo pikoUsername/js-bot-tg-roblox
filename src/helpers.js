@@ -1,5 +1,5 @@
 
-function validateReturnData(data) { 
+export function validateReturnData(data) { 
     if (typeof data.tx_id !== "number") { 
         throw new Error("Validation error: tx_id is not number")
     }
@@ -19,7 +19,7 @@ function validateReturnData(data) {
     }
 }
 
-function isValidHttpUrl(string) {
+export function isValidHttpUrl(string) {
     try {
       const newUrl = new URL(string);
       return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
@@ -28,7 +28,7 @@ function isValidHttpUrl(string) {
     }
 }
 
-var getKeys = function(obj){
+export var getKeys = function(obj){
     var keys = [];
     for(var key in obj){
        keys.push(key);
@@ -36,7 +36,7 @@ var getKeys = function(obj){
     return keys;
 }
 
-function isAdminUser(userId) {
+export function isAdminUser(userId) {
     const adminUserIds = [809124390, 789012];
     return adminUserIds.includes(userId);
 }

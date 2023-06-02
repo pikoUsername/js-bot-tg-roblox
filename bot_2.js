@@ -1,44 +1,38 @@
 import TelegramBot from 'node-telegram-bot-api';
-import sqlite3 from 'sqlite3'; 
-import { sendURLToRabbitMq } from './src/publisher.js';
+import { sendURLToRabbitMq, connectToRabbitMQ } from './src/publisher.js';
+import { createConsumer, runConsumer, createConsumerInfo } from './src/consumer.js';
+import { EXCHANGE_RETURN_KEY, QUEUE_NAME, QUEUE_RETURN_NAME } from './src/consts.js';
+import { TgOnMessageHandler } from './src/handlers.js';
+import { createTables } from './src/repos.js';
+import { SQLiteConnector } from './src/db.js';
 
 
-const db = new sqlite3.Database('./database.db');
+const db = new SQLiteConnector("./database.db")
 const bot = new TelegramBot("5605036155:AAHgseuE-0PXQvkrGxP414W-cZMVZmxigHY", { polling: true });
+const AMQP_URL = "amqp://piko:password@localhost:5672/test?heartbeat=0"
+
+try { 
+    db.connect()
+    createTables(db)
+    connectToRabbitMQ(AMQP_URL, QUEUE_NAME)
+    createConsumer(AMQP_URL, createConsumerInfo(QUEUE_RETURN_NAME, EXCHANGE_RETURN_KEY), TgOnMessageHandler(bot)).then(() => {
+        runConsumer()
+    })
+} catch (err) { 
+    console.error(err)
+}
 
 
 // говнокод высшей степени! Награждаю вас кто написал это, высшей степенью говна кодерства 
 let chatState = {};
-// импорт из glua! ПРОГРЕСС 
+let transfer_count = {}; 
+let urls = {};
+// стиль из glua 
 let Dividednumber;
 let payment;
 let vivodNumber;
 let specialUserId
-let transfer_count; 
-let urls; 
-
-
-db.run(`CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  telegramUsername TEXT,
-  userBalance INTEGER DEFAULT 0,
-  userId INTEGER,
-  timeReg TEXT,
-  chatState TEXT DEFAULT userState,
-  allAmountBalance INTEGER
-)`);
-
-db.run(`
-CREATE TABLE IF NOT EXISTS transactions( 
-    id INTEGER PRIMARY KEY AUTOINCREMENT, 
-    name VARCHAR(52) NOT NULL, 
-    user_id INTEGER REFERENCES users ON DELETE CASCADE, 
-    url TEXT NOT NULL, 
-    accepted BOOLEAN DEFAULT false, 
-    status INTEGER, 
-    price INTEGER
-); 
-`)
+ 
 
 function isValidHttpUrl(string) {
     try {
@@ -410,7 +404,7 @@ bot.on("callback_query", (callbackQuery) => {
         console.log(chatState[chatId])
     } else if (data === "avtoPopolnenyieDlyaZayavka") {
         function increaseUserBalance(userId, amount, callback) {
-            db.run(
+            db.execute(
                 `UPDATE users SET userBalance = userBalance + ? WHERE userId = ?`,
                 [amount, userId],
                 function (err) {
@@ -443,52 +437,86 @@ bot.on("callback_query", (callbackQuery) => {
 })
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
+    const userId = msg.from.id 
     if (msg.text === "Вызвать меню") {
         bot.sendMessage(chatId, "Вот мое меню:", Keyboard)
     }
-    if (chatState[chatId] === "TRANSFER_INPUT") { 
-            let number = +msg.text
+    if (chatState[chatId] === "COMPLETE_GAMEPASS") { 
+
+    } else if (chatState[chatId] === "TRANSFER_INPUT") { 
+            let number = parseInt(msg.text)
             if (number === NaN) { 
-                await bot.sendMessage("Отправьте занаво свое значение")
+                await bot.sendMessage(chatId, "Отправьте занаво свое значение")
                 return 
             } 
-            
-            await bot.sendMessage(chatId,"Введите ссылку на геймпасс" )
+            db.execute("SELECT userBalance FROM users WHERE userId = ?", [userId], async (err, row) => {
+                if (err) { 
+                    console.error(err) 
+                    return 
+                }
+                if (!row) { 
+                    console.log("User not found with %d", userId)
+                    return 
+                }
 
-            transfer_count[chatId] = number 
-            // db.run( 
-            //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
-            // , "vivod_sredstv",)
-            chatState[chatId] = "URL_INPUT" 
-    } 
-    if (chatState[chatId] === "URL_INPUT") { 
-        if (!isValidHttpUrl()) {
-            await bot.sendMessage("Ссылка не правильная")
+                if (row.userBalance - number < 0) { 
+                    await bot.sendMessage(chatId, "У вас недостаточно баланса для покупки")
+                    chatState[chatId] = ""   
+                    return 
+                }
+                
+                transfer_count[chatId] = number 
+                // db.execute( 
+                //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
+                // , "vivod_sredstv",)
+                chatState[chatId] = "URL_INPUT"             
+                await bot.sendMessage(chatId,"Введите ссылку на геймпасс" )
+            })
+
+
+    } else if (chatState[chatId] === "URL_INPUT") { 
+        if (!isValidHttpUrl(msg.text)) {
+            await bot.sendMessage(chatId, `Ссылка не правильная, попробуйте снова, ссылка: ${msg.text}`)
+            return 
         }
+        console.log("Using %s URL for transaction", msg.text)
+        bot.sendMessage(chatId, "Ссылка правильная, вы точно хотите купить робуксы? (Да или нет)")
         urls[chatId] = msg.text
 
-        chatState[chatId] = "COMPLETE_GAMEPASS"
-    }
-    if (chatState[chatId] === "COMPLETE_GAMEPASS") { 
-        db.run(`
-            SELECT id FROM users WHERE userId = ? 
-        `, [msg.from.id], async (err, row) => {  
-            if (err) { 
-                console.error(err) 
-                return 
-            }
-            await bot.sendMessage("Ваша транзакция на оброботке")
-            db.run(`
-                INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
-            `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId]], async (err, row) => {
-                    if (err) { 
-                        console.error(err) 
-                        return 
-                    }
-                    await sendURLToRabbitMq(urls[chatId], transfer_count[chatId], row.id)
+        chatState[chatId] = "COMPLETE_WAIT_YES_OR_NO"
+    } else if (chatState[chatId] === "COMPLETE_WAIT_YES_OR_NO") { 
+        if (msg.text.toLowerCase() == "да") { 
+            db.execute(`
+                SELECT id, userBalance FROM users WHERE userId = ? 
+            `, [msg.from.id], async (err, row) => {  
+                if (err) { 
+                    console.error(err) 
+                    return 
+                }
+                if (!row) { 
+                    console.log("User not found with %d", userId)
+                    return 
+                }
+                await bot.sendMessage(chatId, "Ваша транзакция на оброботке")
+                db.execute(`
+                    INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
+                `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId]], async (err, row) => {
+                        if (err) { 
+                            console.error(err) 
+                            return 
+                        }
+                        await sendURLToRabbitMq(urls[chatId], transfer_count[chatId], row.id)
+                        chatState[chatId] = ""
+                }) 
             }) 
-        }) 
+        } else { 
+            bot.sendMessage(chatId, "Ок!")
+            chatState[chatId] = ""
+            urls[chatId] = ""
+            transfer_count[chatId] = ""
+        }
     }
+
     if (chatState[chatId] === "waitMoneyAmount") {
         if (msg.text === msg.text) {
             if (msg.text > 0) {
@@ -600,7 +628,7 @@ bot.onText(/\/start/, (msg) => {
         if (row && row.chatState) {
             chatState = row.chatState;
         } else {
-            db.run(`INSERT INTO users (telegramUsername, userId, timeReg) VALUES (?, ?, ?)`, [telegramUsername, userId, currentTime], function (err) {
+            db.execute(`INSERT INTO users (telegramUsername, userId, timeReg) VALUES (?, ?, ?)`, [telegramUsername, userId, currentTime], function (err) {
                 if (err) {
                     console.error(err.message);
                     return;
@@ -658,19 +686,23 @@ const againMenu = {
 
 bot.onText(/\/transfer/, async (msg) => { 
     const chatId = msg.chat.id;
+
     const userid = msg.from.id;
-    db.run(`SELECT * FROM users WHERE userId = ?`, [userid], async (err, row) => {
+
+    db.execute(`SELECT * FROM users WHERE userId = ?;`, [userid], async (err, row) => {
         if (err) { 
             console.error(err)
             return 
         }
         if (row === null || row === undefined) { 
+            console.log("User with tgid %d not found", userid)
+            await bot.sendMessage(chatId, "Введите /start для начала разговора!")
             return 
         }
 
         chatState[chatId] = "TRANSFER_INPUT"
 
-        await bot.sendMessage("Введите сколько хотите вывести!")
+        await bot.sendMessage(chatId, "Введите сколько хотите вывести!")
     }) 
 })
 
@@ -728,7 +760,7 @@ bot.onText(/\/blockuser (\d+)/, (msg, match) => {
 });
 
 function blockUser(userId, callback) {
-    db.run(
+    db.execute(
         `UPDATE users SET isBlocked = 1 WHERE userId = ?`,
         [userId],
         function (err) {
@@ -743,12 +775,12 @@ function blockUser(userId, callback) {
 }
 
 function isAdminUser(userId) {
-    const adminUserIds = [809124390, 789012];
+    const adminUserIds = [809124390, 789012, 935770891];
     return adminUserIds.includes(userId);
 }
 
 function increaseUserBalance(userId, amount, callback) {
-    db.run(
+    db.execute(
         `UPDATE users SET userBalance = userBalance + ? WHERE userId = ?`,
         [amount, userId],
         function (err) {
@@ -763,7 +795,7 @@ function increaseUserBalance(userId, amount, callback) {
 }
 
 function minusUserBalance(userId, amount, callback) {
-    db.run(
+    db.execute(
         `UPDATE users SET userBalance = userBalance + ? WHERE userId = ?`,
         [amount, userId],
         function (err) {

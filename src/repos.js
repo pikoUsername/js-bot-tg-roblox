@@ -25,7 +25,7 @@ export class TransactionRepository {
 
     getUserByTransaction(id, cb) {  
         return this.conn.fetch(`
-            SELECT u.* FROM users AS u WHERE id IN (SELECT user_id FROM transactions AS tx WHERE user_id = ?) 
+            SELECT u.* FROM users AS u WHERE id IN (SELECT user_id FROM transactions AS tx WHERE tx.id = ?) 
         `, [id], cb)
     }
 
@@ -104,15 +104,15 @@ export class UsersRepository {
     createTable() { 
         this.conn.execute(
             `CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                tg_username VARCHAR(125),
-                balance INTEGER DEFAULT 0,
-                tg_id INTEGER,
-                timeReg TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                chatState VARCHAR(125) DEFAULT 'chat_state',
-                allAmountBalance INTEGER DEFAULT 0,  
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegramUsername TEXT,
+                userBalance INTEGER DEFAULT 0,
+                userId INTEGER,
+                timeReg TEXT,
+                chatState TEXT DEFAULT userState,
+                allAmountBalance INTEGER, 
                 is_blocked BOOLEAN DEFAULT false
-            );`
+              );`
         )
     }
 
