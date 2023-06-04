@@ -1,15 +1,15 @@
-export class TransactionRepository { 
-    static Instance = null 
+export class TransactionRepository {
+    static Instance = null
 
-    constructor(conn) { 
-        this.conn = conn 
+    constructor(conn) {
+        this.conn = conn
     }
 
-    getByID(id, cb) { 
-        return this.conn.fetch("SELECT * FROM transactions WHERE id = ?", [id], cb) 
+    getByID(id, cb) {
+        return this.conn.fetch("SELECT * FROM transactions WHERE id = ?", [id], cb)
     }
 
-    acceptIt(id, userID, callback) { 
+    acceptIt(id, userID, callback) {
         this.conn.execute(`
         UPDATE transactions SET accepted = true WHERE id = ? 
         `, [id]).execute(`
@@ -17,19 +17,19 @@ export class TransactionRepository {
         `, [id, userID], callback)
     }
 
-    create(name, url, user_id, price, cb) { 
+    create(name, url, user_id, price, cb) {
         return this.conn.execute(`
             INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
         `, [name, url, user_id, price], cb)
     }
 
-    getUserByTransaction(id, cb) {  
+    getUserByTransaction(id, cb) {
         return this.conn.fetch(`
             SELECT u.* FROM users AS u WHERE id IN (SELECT user_id FROM transactions AS tx WHERE tx.id = ?) 
         `, [id], cb)
     }
 
-    async createTable() { 
+    async createTable() {
         this.conn.execute(`
         CREATE TABLE IF NOT EXISTS transactions( 
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -42,44 +42,44 @@ export class TransactionRepository {
         `)
     }
 
-    static getInstance() { 
+    static getInstance() {
         return TransactionRepository.Instance
     }
 
-    static setInstance(ins) { 
-        TransactionRepository.Instance = ins 
+    static setInstance(ins) {
+        TransactionRepository.Instance = ins
     }
 }
 
-export class UsersRepository { 
-    static Instance = null 
+export class UsersRepository {
+    static Instance = null
 
-    constructor(conn) { 
-        this.conn = conn 
+    constructor(conn) {
+        this.conn = conn
     }
 
-    getByID(id, callback) { 
+    getByID(id, callback) {
         return this.conn.fetch(
             `SELECT * FROM users WHERE id = ? LIMIT 1;`, [id], callback
         )
     }
 
-    getByTgID(tg_id, callback) { 
-        return this.conn.fetch( 
-            'SELECT * FROM users WHERE tg_id = ? LIMIT 1', [tg_id], callback, 
+    getByTgID(tg_id, callback) {
+        return this.conn.fetch(
+            'SELECT * FROM users WHERE tg_id = ? LIMIT 1', [tg_id], callback,
         )
     }
 
-    create(tg_username, tg_id, callback) { 
+    create(tg_username, tg_id, callback) {
         return this.conn.execute(
             `INSERT INTO users(tg_username, tg_id) VALUES (?, ?) RETURNING *`,
-            [tg_username, tg_id], 
+            [tg_username, tg_id],
             callback
         )
     }
 
-    blockUser(tg_id, callback) { 
-        return this.conn.execute( 
+    blockUser(tg_id, callback) {
+        return this.conn.execute(
             `UPDATE users SET is_blocked = 1 WHERE tg_id = ?`
             [tg_id], callback
         )
@@ -97,11 +97,11 @@ export class UsersRepository {
         return this.conn.run(
             `UPDATE users SET userBalance = userBalance + ? WHERE userId = ?`,
             [amount, tg_id],
-            callback, 
+            callback,
         );
     }
 
-    createTable() { 
+    createTable() {
         this.conn.execute(
             `CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,23 +116,51 @@ export class UsersRepository {
         )
     }
 
-    static getInstance() { 
+    static getInstance() {
         return UsersRepository.Instance
     }
 
-    static setInstance(ins) { 
-        UsersRepository.Instance = ins 
+    static setInstance(ins) {
+        UsersRepository.Instance = ins
     }
 }
 
+export class UserTokensRepositories {
+    static Instance = null
 
-export function createTables(conn) { 
+    constructor(conn) {
+        this.conn = conn
+    }
+
+    createTable() {
+        this.conn.execute(
+            `CREATE TABLE IF NOT EXISTS user_tokens (  
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                token TEXT,  
+                is_active BOOLEAN DEFAULT true  
+            );`
+        )
+    }
+
+    static getInstance() {
+        return UsersRepository.Instance
+    }
+
+    static setInstance(ins) {
+        UsersRepository.Instance = ins
+    }
+}
+
+export function createTables(conn) {
     let trans = new TransactionRepository(conn)
     let user = new UsersRepository(conn)
+    let tokens = new UserTokensRepositories(conn)
 
     TransactionRepository.setInstance(trans)
     UsersRepository.setInstance(user)
-    
+    UserTokensRepositories.setInstance(tokens)
+
     user.createTable()
     trans.createTable()
+    tokens.createTable()
 }

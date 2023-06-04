@@ -8,31 +8,32 @@ import { SQLiteConnector } from './src/db.js';
 
 
 const db = new SQLiteConnector("./database.db")
-const bot = new TelegramBot("5605036155:AAHgseuE-0PXQvkrGxP414W-cZMVZmxigHY", { polling: true });
-const AMQP_URL = "amqp://piko:password@localhost:5672/test?heartbeat=0"
+const bot = new TelegramBot("6197708803:AAEYi7qeUDI2bplNVCfW7K4lHOyOzEAEeCk", { polling: true });
+const AMQP_URL = "amqp://user:password@localhost:5672/test?heartbeat=0"
 
-try { 
+try {
     db.connect()
     createTables(db)
     connectToRabbitMQ(AMQP_URL, QUEUE_NAME)
     createConsumer(AMQP_URL, createConsumerInfo(QUEUE_RETURN_NAME, EXCHANGE_RETURN_KEY), TgOnMessageHandler(bot)).then(() => {
         runConsumer()
     })
-} catch (err) { 
+} catch (err) {
     console.error(err)
 }
 
 
 // говнокод высшей степени! Награждаю вас кто написал это, высшей степенью говна кодерства 
 let chatState = {};
-let transfer_count = {}; 
+let transfer_count = {};
 let urls = {};
 // стиль из glua 
 let Dividednumber;
 let payment;
 let vivodNumber;
 let specialUserId
- 
+let costnumber
+
 
 function isValidHttpUrl(string) {
     try {
@@ -48,7 +49,7 @@ bot.on("callback_query", (callbackQuery) => {
     const data = callbackQuery.data;
     const messageId = callbackQuery.message.message_id;
     if (data === "buyRobux") {
-        const message = `Какое количество робуксов вы желаете купить?\nКурс робуксов: 1руб - 1робукс `;
+        const message = `💸 Какое количество робуксов вы желаете купить?\n✔️ [Курс робуксов: 1руб - 1робукс]`;
         bot.editMessageText(message, {
             chat_id: chatId,
             message_id: messageId,
@@ -98,7 +99,7 @@ bot.on("callback_query", (callbackQuery) => {
                 return console.error(err.message);
             }
             const balance = row ? row.userBalance : 0;
-            bot.editMessageText(`Ваш текующий баланс робуксов: ${balance}\nСколько робуксов вы хотите вывести?`, {
+            bot.editMessageText(`💸 Ваш текующий баланс робуксов: ${balance}\n❓ Сколько робуксов вы хотите вывести?`, {
                 chat_id: chatId,
                 message_id: messageId,
                 reply_markup: {
@@ -179,11 +180,17 @@ bot.on("callback_query", (callbackQuery) => {
         })
 
     } else if (data === "newsChanel") {
-        bot.editMessageText(`Новостной канал:`, {
+        bot.editMessageText(`✅ Воспользуйтесь кнопками ниже:`, {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: {
                 inline_keyboard: [
+                    [
+                        {
+                            text: "Новостной канал",
+                            url: "t.me/honeyrobux"
+                        }
+                    ],
                     [
                         {
                             text: "Вернуться назад",
@@ -194,11 +201,17 @@ bot.on("callback_query", (callbackQuery) => {
             }
         })
     } else if (data === "helpAdmin") {
-        bot.editMessageText(`Тех поддержка в режиме 24/7 \nВоспользуйтесь командой ниже, чтобы наши операторы смогли с вами связаться`, {
+        bot.editMessageText(`😊 Наши операторы доступны для технической поддержки круглосуточно, 24/7. \n✅ Используйте команду ниже, чтобы связаться с ними.`, {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: {
                 inline_keyboard: [
+                    [
+                        {
+                            text: "Тех поддержка",
+                            url: "t.me/keilimurla"
+                        }
+                    ],
                     [
                         {
                             text: "Вернуться назад",
@@ -218,15 +231,15 @@ bot.on("callback_query", (callbackQuery) => {
                 inline_keyboard: [
                     [
                         {
-                            text: "💸Купить R$💸", callback_data: "buyRobux"
-                        },
-                        {
-                            text: "💲Вывести💲", callback_data: "giveaway"
+                            text: "👤Профиль👤", callback_data: "profile"
                         }
                     ],
                     [
                         {
-                            text: "👤Профиль👤", callback_data: "profile"
+                            text: "💸Купить R$💸", callback_data: "buyRobux"
+                        },
+                        {
+                            text: "💲Вывести💲", callback_data: "giveaway"
                         }
                     ],
                     [
@@ -338,7 +351,7 @@ bot.on("callback_query", (callbackQuery) => {
             }
         })
     } else if (data === "userOplatil") {
-        bot.editMessageText(`Ваша заявка принята! \nОжидайте пополнение в течении 3-х часов!`, {
+        bot.editMessageText(`✅ Ваша заявка принята! \n⏰ Ожидайте пополнение в течении 3-х часов!`, {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: {
@@ -367,7 +380,37 @@ bot.on("callback_query", (callbackQuery) => {
         specialUserId = chatId
         return specialUserId
     } else if (data === "gamepassCostCalculator") {
-    } else if (data === "gamepassCostCalculator") {
+        bot.editMessageText("Напишите сумму которую вы хотите получить, а я напишу сколько должен стоить геймпасс!", {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "Вернуться назад",
+                            callback_data: "calculator"
+                        }
+                    ]
+                ]
+            }
+        })
+        chatState[chatId] = "gamepassCostCalculator"
+    } else if (data === "robuxCostCalculator") {
+        bot.editMessageText("Напишите сумму робуксов которую вы хотите купить, а я напишу сколько вы должны будете заплатить!", {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "Вернуться назад",
+                            callback_data: "calculator"
+                        }
+                    ]
+                ]
+            }
+        })
+        chatState[chatId] = "robuxCostCalculator"
     } else if (data === "vivodDa") {
         bot.editMessageText(`Вы собираетесь выводить ${vivodNumber} робуксов! \nТеперь введите ссылку на геймпасс:`, {
             chat_id: chatId,
@@ -385,6 +428,7 @@ bot.on("callback_query", (callbackQuery) => {
         })
         chatState[chatId] = "linkwait"
         console.log(chatState[chatId])
+
     } else if (data === "otmenaPayment") {
         bot.editMessageText(`отменилась покупка`, {
             chat_id: chatId,
@@ -426,6 +470,7 @@ bot.on("callback_query", (callbackQuery) => {
             increaseUserBalance(targetUserId, amount, (result) => {
                 if (result.success) {
                     bot.sendMessage(chatId, `Баланс пользователя с ID ${targetUserId} успешно пополнен на ${amount}`);
+                    bot.sendMessage(targetUserId, `Заявка на пополнение баланса одобрена администратором. Ваш баланс пополнен на - ${amount} робуксов`)
                 } else {
                     bot.sendMessage(chatId, `Не удалось пополнить баланс пользователя с ID ${targetUserId}`);
                 }
@@ -435,89 +480,112 @@ bot.on("callback_query", (callbackQuery) => {
         }
     }
 })
+
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    const userId = msg.from.id 
+    const userId = msg.from.id
+    const url = msg.text;
+
     if (msg.text === "Вызвать меню") {
         bot.sendMessage(chatId, "Вот мое меню:", Keyboard)
     }
-    if (chatState[chatId] === "COMPLETE_GAMEPASS") { 
+    else if (chatState[chatId] === "TRANSFER_INPUT") {
+        let number = parseInt(msg.text)
+        if (number === NaN) {
+            await bot.sendMessage(chatId, "Введите значение в виде цифер!")
+            return
+        }
+        db.execute("SELECT userBalance FROM users WHERE userId = ?", [userId], async (err, row) => {
+            if (err) {
+                console.error(err)
+                return
+            }
+            if (!row) {
+                console.log("User not found with %d", userId)
+                return
+            }
 
-    } else if (chatState[chatId] === "TRANSFER_INPUT") { 
-            let number = parseInt(msg.text)
-            if (number === NaN) { 
-                await bot.sendMessage(chatId, "Отправьте занаво свое значение")
-                return 
-            } 
-            db.execute("SELECT userBalance FROM users WHERE userId = ?", [userId], async (err, row) => {
-                if (err) { 
-                    console.error(err) 
-                    return 
-                }
-                if (!row) { 
-                    console.log("User not found with %d", userId)
-                    return 
-                }
+            if (row.userBalance - number < 0) {
+                await bot.sendMessage(chatId, "У вас недостаточно баланса для покупки")
+                chatState[chatId] = ""
+                return
+            }
 
-                if (row.userBalance - number < 0) { 
-                    await bot.sendMessage(chatId, "У вас недостаточно баланса для покупки")
-                    chatState[chatId] = ""   
-                    return 
-                }
-                
-                transfer_count[chatId] = number 
-                // db.execute( 
-                //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
-                // , "vivod_sredstv",)
-                chatState[chatId] = "URL_INPUT"             
-                await bot.sendMessage(chatId,"Введите ссылку на геймпасс" )
-            })
+            transfer_count[chatId] = number
+            // db.execute( 
+            //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
+            // , "vivod_sredstv",)
+            chatState[chatId] = "URL_INPUT"
+            await bot.sendMessage(chatId, "Отправьте ссылку на геймпасс:")
+        })
 
 
-    } else if (chatState[chatId] === "URL_INPUT") { 
+    } else if (chatState[chatId] === "URL_INPUT") {
         if (!isValidHttpUrl(msg.text)) {
-            await bot.sendMessage(chatId, `Ссылка не правильная, попробуйте снова, ссылка: ${msg.text}`)
-            return 
+            const keyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: "Отменить покупку",
+                                callback_data: "backToMenu"
+                            }
+                        ]
+                    ]
+                }
+            }
+            await bot.sendMessage(chatId, `Ваша отправленная ссылка не рабочая, попробуйте снова!`, keyboard)
+            return
         }
         console.log("Using %s URL for transaction", msg.text)
-        bot.sendMessage(chatId, "Ссылка правильная, вы точно хотите купить робуксы? (Да или нет)")
+        bot.sendMessage(chatId, "Вы точно хотите совершить покупку? (Да/Нет)")
         urls[chatId] = msg.text
 
         chatState[chatId] = "COMPLETE_WAIT_YES_OR_NO"
-    } else if (chatState[chatId] === "COMPLETE_WAIT_YES_OR_NO") { 
-        if (msg.text.toLowerCase() == "да") { 
+    } else if (chatState[chatId] === "COMPLETE_WAIT_YES_OR_NO") {
+        if (msg.text.toLowerCase() == "да") {
             db.execute(`
                 SELECT id, userBalance FROM users WHERE userId = ? 
-            `, [msg.from.id], async (err, row) => {  
-                if (err) { 
-                    console.error(err) 
-                    return 
+            `, [msg.from.id], async (err, row) => {
+                if (err) {
+                    console.error(err)
+                    return
                 }
-                if (!row) { 
+                if (!row) {
                     console.log("User not found with %d", userId)
-                    return 
+                    return
                 }
-                await bot.sendMessage(chatId, "Ваша транзакция на оброботке")
+                await bot.sendMessage(chatId, "Ваша транзакция на обработке!")
                 db.execute(`
                     INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
                 `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId]], async (err, row) => {
-                        if (err) { 
-                            console.error(err) 
-                            return 
-                        }
-                        await sendURLToRabbitMq(urls[chatId], transfer_count[chatId], row.id)
-                        chatState[chatId] = ""
-                }) 
-            }) 
-        } else { 
-            bot.sendMessage(chatId, "Ок!")
+                    if (err) {
+                        console.error(err)
+                        return
+                    }
+                    await sendURLToRabbitMq(urls[chatId], transfer_count[chatId], row.id)
+                    chatState[chatId] = ""
+                })
+            })
+        } else {
+            const keyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: "Вернуться в меню",
+                                callback_data: "backToMenu"
+                            }
+                        ]
+                    ]
+                }
+            }
+            bot.sendMessage(chatId, "Ваш запрос на вывод был успешно отменен.", keyboard)
             chatState[chatId] = ""
             urls[chatId] = ""
             transfer_count[chatId] = ""
         }
-    }
-
-    if (chatState[chatId] === "waitMoneyAmount") {
+    } else if (chatState[chatId] === "waitMoneyAmount") {
         if (msg.text === msg.text) {
             if (msg.text > 0) {
                 const number = msg.text
@@ -554,40 +622,53 @@ bot.on('message', async (msg) => {
                 bot.sendMessage(chatId, "Вы неправильно ввели сумму для платежа! Попробуйте еще раз")
             }
         }
-    }
-    else if (chatState[chatId] === "vivodMoney") {
+    } else if (chatState[chatId] === "vivodMoney") {
         if (msg.text === msg.text) {
             if (msg.text > 0) {
-                const number = msg.text
-                vivodNumber = number * 0.59
-                chatState[chatId] = "vivodMoney"
-                const keyboardPayments = {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: "Да", callback_data: "vivodDa"
-                                }
-                            ],
-                            [
-                                {
-                                    text: "Нет", callback_data: "vivodNet"
-                                }
-                            ]
-                        ]
-                    }
+                let number = parseInt(msg.text)
+                if (number === NaN) {
+                    await bot.sendMessage(chatId, "Введите значение в виде цифер!")
+                    return
                 }
-                bot.sendMessage(chatId, `Вы хотите вывести ${number} робуксов?\n`, keyboardPayments).then(chatState[chatId] = "lol")
-                // Отправка сообщения в RabbitMQ
-                // sendToRabbitMQ(message);
+                db.execute("SELECT userBalance FROM users WHERE userId = ?", [userId], async (err, row) => {
+                    if (err) {
+                        console.error(err)
+                        return
+                    }
+                    if (!row) {
+                        console.log("User not found with %d", userId)
+                        return
+                    }
+
+                    if (row.userBalance - number < 0) {
+                        bot.sendMessage(chatId, "😞 У вас недостаточно баланса для покупки", {
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [
+                                        {
+                                            text: "Вернуться назад",
+                                            callback_data: "backToMenu"
+                                        }
+                                    ]
+                                ]
+                            }
+                        })
+                        chatState[chatId] = ""
+                        return
+                    }
+
+                    transfer_count[chatId] = number
+                    // db.execute( 
+                    //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
+                    // , "vivod_sredstv",)
+                    chatState[chatId] = "URL_INPUT"
+                    await bot.sendMessage(chatId, "Отправьте ссылку на геймпасс:")
+                })
             } else {
                 bot.sendMessage(chatId, "Вы неправильно ввели сумму для вывода! Попробуйте еще раз")
             }
         }
-    }
- 
-    const url = msg.text;
-    if (chatState[chatId] === "linkwait") {
+    } else if (chatState[chatId] === "linkwait") {
         if (isValidHttpUrl(url)) {
             const chatId = msg.chat.id;
             const url = msg.text
@@ -607,6 +688,8 @@ bot.on('message', async (msg) => {
             }
             bot.sendMessage(chatId, "Ссылка не правильная, попробуй еще раз!", Keyboard)
         }
+    } else if (chatState[chatId] === "gamepassCostCalculator") {
+        bot.sendMessage(chatId, "ok")
     }
 })
 
@@ -644,15 +727,15 @@ const Keyboard = {
         inline_keyboard: [
             [
                 {
-                    text: "💸Купить R$💸", callback_data: "buyRobux"
-                },
-                {
-                    text: "💲Вывести💲", callback_data: "giveaway"
+                    text: "👤Профиль👤", callback_data: "profile"
                 }
             ],
             [
                 {
-                    text: "👤Профиль👤", callback_data: "profile"
+                    text: "💸Купить R$💸", callback_data: "buyRobux"
+                },
+                {
+                    text: "💲Вывести💲", callback_data: "giveaway"
                 }
             ],
             [
@@ -684,27 +767,27 @@ const againMenu = {
     }
 }
 
-bot.onText(/\/transfer/, async (msg) => { 
-    const chatId = msg.chat.id;
+// bot.onText(/\/transfer/, async (msg) => {
+//     const chatId = msg.chat.id;
 
-    const userid = msg.from.id;
+//     const userid = msg.from.id;
 
-    db.execute(`SELECT * FROM users WHERE userId = ?;`, [userid], async (err, row) => {
-        if (err) { 
-            console.error(err)
-            return 
-        }
-        if (row === null || row === undefined) { 
-            console.log("User with tgid %d not found", userid)
-            await bot.sendMessage(chatId, "Введите /start для начала разговора!")
-            return 
-        }
+//     db.execute(`SELECT * FROM users WHERE userId = ?;`, [userid], async (err, row) => {
+//         if (err) {
+//             console.error(err)
+//             return
+//         }
+//         if (row === null || row === undefined) {
+//             console.log("User with tgid %d not found", userid)
+//             await bot.sendMessage(chatId, "Введите /start для начала разговора!")
+//             return
+//         }
 
-        chatState[chatId] = "TRANSFER_INPUT"
+//         chatState[chatId] = "TRANSFER_INPUT"
 
-        await bot.sendMessage(chatId, "Введите сколько хотите вывести!")
-    }) 
-})
+//         await bot.sendMessage(chatId, "Какое количество робуксов вы хотите вывести?")
+//     })
+// })
 
 bot.onText(/\/addbalance (\d+) (\d+)/, (msg, match) => {
     const chatId = msg.chat.id;
@@ -757,6 +840,23 @@ bot.onText(/\/blockuser (\d+)/, (msg, match) => {
     } else {
         bot.sendMessage(chatId, "У вас нет прав на выполнение этой команды");
     }
+});
+
+bot.onText(/\/addToken (\d+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const token = match[1]; // Значение токена, переданное в команде
+
+    // Вставка значения токена в базу данных
+    db.execute('INSERT INTO user_tokens (token) VALUES (?)', [token], function (err, row) {
+        if (err) {
+            console.error('Ошибка при вставке значения токена:', err.message);
+            bot.sendMessage(chatId, 'Произошла ошибка. Пожалуйста, попробуйте снова.');
+            return;
+        }
+
+        console.log('Значение токена успешно сохранено в базе данных.');
+        bot.sendMessage(chatId, 'Значение токена успешно сохранено.');
+    });
 });
 
 function blockUser(userId, callback) {

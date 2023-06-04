@@ -4,15 +4,15 @@ const Keyboard = {
         inline_keyboard: [
             [
                 {
-                    text: "💸Купить R$💸", callback_data: "buyRobux"
-                },
-                {
-                    text: "💲Вывести💲", callback_data: "giveaway"
+                    text: "👤Профиль👤", callback_data: "profile"
                 }
             ],
             [
                 {
-                    text: "👤Профиль👤", callback_data: "profile"
+                    text: "💸Купить R$💸", callback_data: "buyRobux"
+                },
+                {
+                    text: "💲Вывести💲", callback_data: "giveaway"
                 }
             ],
             [
