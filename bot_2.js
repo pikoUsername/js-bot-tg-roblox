@@ -8,7 +8,7 @@ import { SQLiteConnector } from './src/db.js';
 
 
 const db = new SQLiteConnector("./database.db")
-const bot = new TelegramBot("6197708803:AAEYi7qeUDI2bplNVCfW7K4lHOyOzEAEeCk", { polling: true });
+const bot = new TelegramBot("6067241823:AAFocSyPdRaJji_-jxFqjIp2qrxR2pHPc2E", { polling: true });
 const AMQP_URL = "amqp://user:password@localhost:5672/test?heartbeat=0"
 
 try {
@@ -49,7 +49,7 @@ bot.on("callback_query", (callbackQuery) => {
     const data = callbackQuery.data;
     const messageId = callbackQuery.message.message_id;
     if (data === "buyRobux") {
-        const message = `💸 Какое количество робуксов вы желаете купить?\n✔️ [Курс робуксов: 1руб - 1робукс]`;
+        const message = `💸 Какое количество робуксов вы желаете купить?\n✔️ [Курс робуксов: 1 руб - 1.8 робукс]`;
         bot.editMessageText(message, {
             chat_id: chatId,
             message_id: messageId,
@@ -209,7 +209,7 @@ bot.on("callback_query", (callbackQuery) => {
                     [
                         {
                             text: "Тех поддержка",
-                            url: "t.me/keilimurla"
+                            url: "t.me/keilimurka"
                         }
                     ],
                     [
@@ -232,6 +232,11 @@ bot.on("callback_query", (callbackQuery) => {
                     [
                         {
                             text: "👤Профиль👤", callback_data: "profile"
+                        }
+                    ],
+                    [
+                        {
+                            text: "📃Инструкция по покупке📃", url: "https://t.me/honeyrobux/2"
                         }
                     ],
                     [
@@ -464,7 +469,7 @@ bot.on("callback_query", (callbackQuery) => {
         const chatId = 809124390
         const adminUserId = 809124390
         const targetUserId = specialUserId
-        const amount = Dividednumber * 1.8
+        const amount = Math.round(Dividednumber * 1.8)
         if (isAdminUser(adminUserId)) {
             // Вызов функции для пополнения баланса пользователя
             increaseUserBalance(targetUserId, amount, (result) => {
@@ -488,8 +493,7 @@ bot.on('message', async (msg) => {
 
     if (msg.text === "Вызвать меню") {
         bot.sendMessage(chatId, "Вот мое меню:", Keyboard)
-    }
-    else if (chatState[chatId] === "TRANSFER_INPUT") {
+    } else if (chatState[chatId] === "TRANSFER_INPUT") {
         let number = parseInt(msg.text)
         if (number === NaN) {
             await bot.sendMessage(chatId, "Введите значение в виде цифер!")
@@ -515,8 +519,9 @@ bot.on('message', async (msg) => {
             // db.execute( 
             //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
             // , "vivod_sredstv",)
+
             chatState[chatId] = "URL_INPUT"
-            await bot.sendMessage(chatId, "Отправьте ссылку на геймпасс:")
+            await bot.sendMessage(chatId, `Вы хотите приобрести ${transfer_count[chatId]} робуксов.\nГеймпасс должен стоить ${transfer_count[chatId] * 1.3}\nОтправьте ссылку на геймпасс:`)
         })
 
 
@@ -555,10 +560,10 @@ bot.on('message', async (msg) => {
                     console.log("User not found with %d", userId)
                     return
                 }
-                await bot.sendMessage(chatId, "Ваша транзакция на обработке!")
+                await bot.sendMessage(chatId, `Ваша транзакция на обработке!`)
                 db.execute(`
                     INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *; 
-                `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId]], async (err, row) => {
+                `, ["Vivod_stdstv", urls[chatId], row.id, transfer_count[chatId] * 1.3], async (err, row) => {
                     if (err) {
                         console.error(err)
                         return
@@ -662,7 +667,7 @@ bot.on('message', async (msg) => {
                     //     `INSERT INTO transactions(name, url, user_id, price) VALUES (?, ?, ?, ?) RETURNING *`
                     // , "vivod_sredstv",)
                     chatState[chatId] = "URL_INPUT"
-                    await bot.sendMessage(chatId, "Отправьте ссылку на геймпасс:")
+                    await bot.sendMessage(chatId, `Вы хотите приобрести ${transfer_count[chatId]} робуксов.\nГеймпасс должен стоить ${transfer_count[chatId] * 1.3} робуксов.\nОтправьте ссылку на геймпасс:`)
                 })
             } else {
                 bot.sendMessage(chatId, "Вы неправильно ввели сумму для вывода! Попробуйте еще раз")
@@ -689,7 +694,35 @@ bot.on('message', async (msg) => {
             bot.sendMessage(chatId, "Ссылка не правильная, попробуй еще раз!", Keyboard)
         }
     } else if (chatState[chatId] === "gamepassCostCalculator") {
-        bot.sendMessage(chatId, "ok")
+        const chatId = msg.chat.id;
+        const text = msg.text;
+
+        // Проверяем, является ли текст числом
+        if (isNaN(text)) {
+            bot.sendMessage(chatId, 'Ошибка! Введи число.');
+            return;
+        }
+
+        // Преобразуем текст в число и вычисляем увеличенное значение
+        const number = parseFloat(text);
+        const increasedNumber = number * 1.3;
+
+        bot.sendMessage(chatId, `Геймпасс должен стоить: ${increasedNumber} робуксов`);
+    } else if (chatState[chatId] === "robuxCostCalculator") {
+        const chatId = msg.chat.id;
+        const text = msg.text;
+
+        // Проверяем, является ли текст числом
+        if (isNaN(text)) {
+            bot.sendMessage(chatId, 'Ошибка! Введи число.');
+            return;
+        }
+
+        // Преобразуем текст в число и вычисляем увеличенное значение
+        const number = parseFloat(text);
+        const increasedNumber = Math.round(number * 0.555555555);
+
+        bot.sendMessage(chatId, `Ты должен заплатить ${increasedNumber} рублей`);
     }
 })
 
@@ -728,6 +761,11 @@ const Keyboard = {
             [
                 {
                     text: "👤Профиль👤", callback_data: "profile"
+                }
+            ],
+            [
+                {
+                    text: "📃Инструкция по покупке📃", url: "https://t.me/honeyrobux/2"
                 }
             ],
             [
@@ -842,7 +880,7 @@ bot.onText(/\/blockuser (\d+)/, (msg, match) => {
     }
 });
 
-bot.onText(/\/addToken (\d+)/, (msg, match) => {
+bot.onText(/\/addToken (.+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const token = match[1]; // Значение токена, переданное в команде
 
