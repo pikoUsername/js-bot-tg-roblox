@@ -231,36 +231,36 @@ bot.on("callback_query", (callbackQuery) => {
                 inline_keyboard: [
                     [
                         {
-                            text: "👤Профиль👤", callback_data: "profile"
+                            text: "🔮 Профиль 🔮", callback_data: "profile"
                         }
                     ],
                     [
                         {
-                            text: "📃Инструкция по покупке📃", url: "https://t.me/honeyrobux/2"
+                            text: "🛍️ Инструкция по покупке 🛍️", url: "https://t.me/honeyrobux/2"
                         }
                     ],
                     [
                         {
-                            text: "💸Купить R$💸", callback_data: "buyRobux"
+                            text: "Купить Robux 💳", callback_data: "buyRobux"
                         },
                         {
-                            text: "💲Вывести💲", callback_data: "giveaway"
+                            text: "Вывести Robux ⭐️", callback_data: "giveaway"
                         }
                     ],
                     [
                         {
-                            text: "🧍Поддержка🧍", callback_data: "helpAdmin"
+                            text: "Поддержка ❓", callback_data: "helpAdmin"
                         },
                         {
-                            text: "📰Новости📰", callback_data: "newsChanel"
+                            text: "Новости 💯", callback_data: "newsChanel"
                         }
                     ],
                     [
                         {
-                            text: "💰Баланс💰", callback_data: "balance"
+                            text: "Баланс 🧿", callback_data: "balance"
                         },
                         {
-                            text: '🏦Калькулятор🏦', callback_data: "calculator"
+                            text: 'Калькулятор 💎', callback_data: "calculator"
                         }
                     ]
                 ]
@@ -760,36 +760,36 @@ const Keyboard = {
         inline_keyboard: [
             [
                 {
-                    text: "👤Профиль👤", callback_data: "profile"
+                    text: "🔮 Профиль 🔮", callback_data: "profile"
                 }
             ],
             [
                 {
-                    text: "📃Инструкция по покупке📃", url: "https://t.me/honeyrobux/2"
+                    text: "🛍️ Инструкция по покупке 🛍️", url: "https://t.me/honeyrobux/2"
                 }
             ],
             [
                 {
-                    text: "💸Купить R$💸", callback_data: "buyRobux"
+                    text: "Купить Robux 💳", callback_data: "buyRobux"
                 },
                 {
-                    text: "💲Вывести💲", callback_data: "giveaway"
+                    text: "Вывести Robux ⭐️", callback_data: "giveaway"
                 }
             ],
             [
                 {
-                    text: "🧍Поддержка🧍", callback_data: "helpAdmin"
+                    text: "Поддержка ❓", callback_data: "helpAdmin"
                 },
                 {
-                    text: "📰Новости📰", callback_data: "newsChanel"
+                    text: "Новости 💯", callback_data: "newsChanel"
                 }
             ],
             [
                 {
-                    text: "💰Баланс💰", callback_data: "balance"
+                    text: "Баланс 🧿", callback_data: "balance"
                 },
                 {
-                    text: '🏦Калькулятор🏦', callback_data: "calculator"
+                    text: 'Калькулятор 💎', callback_data: "calculator"
                 }
             ]
         ]
