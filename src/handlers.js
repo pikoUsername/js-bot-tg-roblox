@@ -36,6 +36,9 @@ export function TgOnMessageHandler(bot) {
                         console.error("Can't pull users with transaction ids;")
                         return 
                     }
+                    if (data.status_code == 200) { 
+                        await ins.acceptIt(tx_id, user.userId, (err, row) => {console.log(`TRANSACTION COMPLETED, for ${user.userId}, TX_ID: ${tx_id}`)})
+                    }
                     await bot.sendMessage(user.userId, `Ваша транзакция обработана, вот её результат: \n ${status_code_info}`)
                 }) 
             })
